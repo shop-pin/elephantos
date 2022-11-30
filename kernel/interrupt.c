@@ -53,9 +53,12 @@ static void pic_init(void) {
    outb (PIC_S_DATA, 0x02);    // ICW3: 设置从片连接到主片的IR2引脚
    outb (PIC_S_DATA, 0x01);    // ICW4: 8086模式, 正常EOI
    
-/* 只打开时钟中断,其它全部关闭 */
-   outb (PIC_M_DATA, 0xfe);
-   outb (PIC_S_DATA, 0xff);
+  /* IRQ2用于级联从片,必须打开,否则无法响应从片上的中断
+  主片上打开的中断有IRQ0的时钟,IRQ1的键盘和级联从片的IRQ2,其它全部关闭 */
+   outb (PIC_M_DATA, 0xf8);
+
+/* 打开从片上的IRQ14,此引脚接收硬盘控制器的中断 */
+   outb (PIC_S_DATA, 0xbf);
 
    put_str("   pic_init done\n");
 }
@@ -101,7 +104,7 @@ static void general_intr_handler(uint8_t vec_nr) {
    if (vec_nr == 14) {	  // 若为Pagefault,将缺失的地址打印出来并悬停
       int page_fault_vaddr = 0; 
       asm ("movl %%cr2, %0" : "=r" (page_fault_vaddr));	  // cr2是存放造成page_fault的地址
-      put_str("\npage fault addr is ");put_int(page_fault_vaddr); 
+      put_str("\npage fault addr is 0x");put_int(page_fault_vaddr); 
    }
    put_str("\n!!!!!!!      excetion message end    !!!!!!!!\n");
   // 能进入中断处理程序就表示已经处在关中断情况下,

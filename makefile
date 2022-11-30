@@ -5,7 +5,7 @@ CC = gcc
 LD = ld
 Mc = -m32
 LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ \
-      -I thread/ -I userprog/
+      -I thread/ -I userprog/ -I fs/ -I shell/
 ASFLAGS = -f elf
 CFLAGS = -Wall $(LIB) -c -fno-builtin -fno-stack-protector -W \
 	 -Wstrict-prototypes -Wmissing-prototypes 
@@ -17,7 +17,11 @@ OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
       $(BUILD_DIR)/switch.o $(BUILD_DIR)/console.o $(BUILD_DIR)/sync.o \
       $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/ioqueue.o $(BUILD_DIR)/tss.o \
       $(BUILD_DIR)/process.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/syscall-init.o \
-      $(BUILD_DIR)/stdio.o
+      $(BUILD_DIR)/stdio.o $(BUILD_DIR)/ide.o $(BUILD_DIR)/stdio-kernel.o $(BUILD_DIR)/fs.o \
+      $(BUILD_DIR)/inode.o $(BUILD_DIR)/file.o $(BUILD_DIR)/dir.o $(BUILD_DIR)/fork.o \
+      $(BUILD_DIR)/shell.o $(BUILD_DIR)/assert.o  $(BUILD_DIR)/buildin_cmd.o \
+      $(BUILD_DIR)/exec.o $(BUILD_DIR)/wait_exit.o $(BUILD_DIR)/pipe.o
+
 ##############     c代码编译     ###############
 $(BUILD_DIR)/main.o : kernel/main.c lib/kernel/print.h \
 	lib/stdint.h kernel/init.h
@@ -105,6 +109,77 @@ $(BUILD_DIR)/syscall-init.o: userprog/syscall-init.c userprog/syscall-init.h \
 
 $(BUILD_DIR)/stdio.o: lib/stdio.c lib/stdio.h lib/stdint.h kernel/interrupt.h \
     	lib/stdint.h kernel/global.h lib/string.h lib/user/syscall.h lib/kernel/print.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/ide.o: device/ide.c device/ide.h lib/stdint.h thread/sync.h \
+    	lib/kernel/list.h kernel/global.h thread/thread.h lib/kernel/bitmap.h \
+     	kernel/memory.h lib/kernel/io.h lib/stdio.h lib/stdint.h \
+	lib/kernel/stdio-kernel.h kernel/interrupt.h kernel/debug.h \
+	device/console.h device/timer.h lib/string.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/stdio-kernel.o: lib/kernel/stdio-kernel.c \
+	lib/kernel/stdio-kernel.h lib/stdint.h \
+    	lib/kernel/print.h lib/stdio.h lib/stdint.h \
+	device/console.h kernel/global.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/fs.o: fs/fs.c fs/fs.h lib/stdint.h device/ide.h thread/sync.h lib/kernel/list.h \
+   	kernel/global.h thread/thread.h lib/kernel/bitmap.h kernel/memory.h fs/super_block.h \
+	fs/inode.h fs/dir.h lib/kernel/stdio-kernel.h lib/string.h lib/stdint.h kernel/debug.h \
+       	kernel/interrupt.h lib/kernel/print.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/inode.o: fs/inode.c fs/inode.h lib/stdint.h lib/kernel/list.h \
+    	kernel/global.h fs/fs.h device/ide.h thread/sync.h thread/thread.h \
+     	lib/kernel/bitmap.h kernel/memory.h fs/file.h kernel/debug.h \
+      	kernel/interrupt.h lib/kernel/stdio-kernel.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/file.o: fs/file.c fs/file.h lib/stdint.h device/ide.h thread/sync.h \
+    	lib/kernel/list.h kernel/global.h thread/thread.h lib/kernel/bitmap.h \
+     	kernel/memory.h fs/fs.h fs/inode.h fs/dir.h lib/kernel/stdio-kernel.h \
+      	kernel/debug.h kernel/interrupt.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/dir.o: fs/dir.c fs/dir.h lib/stdint.h fs/inode.h lib/kernel/list.h \
+    	kernel/global.h device/ide.h thread/sync.h thread/thread.h \
+     	lib/kernel/bitmap.h kernel/memory.h fs/fs.h fs/file.h \
+      	lib/kernel/stdio-kernel.h kernel/debug.h kernel/interrupt.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/fork.o: userprog/fork.c userprog/fork.h thread/thread.h lib/stdint.h \
+    	lib/kernel/list.h kernel/global.h lib/kernel/bitmap.h kernel/memory.h \
+     	userprog/process.h kernel/interrupt.h kernel/debug.h \
+      	lib/kernel/stdio-kernel.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/shell.o: shell/shell.c shell/shell.h lib/stdint.h fs/fs.h \
+    	lib/user/syscall.h lib/stdio.h lib/stdint.h kernel/global.h lib/user/assert.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/assert.o: lib/user/assert.c lib/user/assert.h lib/stdio.h lib/stdint.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/buildin_cmd.o: shell/buildin_cmd.c shell/buildin_cmd.h lib/stdint.h \
+    	lib/user/syscall.h lib/stdio.h lib/stdint.h lib/string.h fs/fs.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/exec.o: userprog/exec.c userprog/exec.h thread/thread.h lib/stdint.h \
+    	lib/kernel/list.h kernel/global.h lib/kernel/bitmap.h kernel/memory.h \
+     	lib/kernel/stdio-kernel.h fs/fs.h lib/string.h lib/stdint.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/wait_exit.o: userprog/wait_exit.c userprog/wait_exit.h \
+    	userprog/../thread/thread.h lib/stdint.h lib/kernel/list.h \
+     	kernel/global.h lib/kernel/bitmap.h kernel/memory.h kernel/debug.h \
+      	thread/thread.h lib/kernel/stdio-kernel.h
+	$(CC) $(Mc) $(CFLAGS) $< -o $@
+
+$(BUILD_DIR)/pipe.o: shell/pipe.c shell/pipe.h lib/stdint.h kernel/memory.h \
+    	lib/kernel/bitmap.h kernel/global.h lib/kernel/list.h fs/fs.h fs/file.h \
+     	device/ide.h thread/sync.h thread/thread.h fs/dir.h fs/inode.h fs/fs.h \
+      	device/ioqueue.h thread/thread.h
 	$(CC) $(Mc) $(CFLAGS) $< -o $@
 
 ##############    汇编代码编译    ###############
